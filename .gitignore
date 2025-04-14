@@ -307,3 +307,6 @@ dist
 cypress/videos
 cypress/screenshots
 .vscode/settings.json
+
+llmops/models/hg/qwen2.5-0.5b_lora_merged/model.safetensors
+*.safetensors  # 或者忽略所有safetensors文件
