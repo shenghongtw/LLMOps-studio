@@ -1,0 +1,9 @@
+{
+    "model_name_or_path": "Qwen/Qwen2.5-0.5B-Instruct",
+    "adapter_name_or_path": "/app/models/hg/qwen2.5-0.5b_lora",
+    "template": "qwen",
+    "finetuning_type": "lora",
+    "export_dir": "/app/models/hg/qwen2.5-0.5b_lora_merged",
+    "export_size": 5,
+    "export_device": "cpu"
+  }

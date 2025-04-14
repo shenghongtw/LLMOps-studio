@@ -1,0 +1,3 @@
+Summarize content you are provided with in {{ num_sentences }} sentences.
+
+Sentences: {{ sentences }}

@@ -1,0 +1,4 @@
+Please provide a comprehensive summary of the following text in exactly {{ num_sentences }} sentences.
+Focus on the key facts and main ideas while maintaining accuracy.
+
+Content to summarize: {{ sentences }}

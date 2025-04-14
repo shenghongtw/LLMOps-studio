@@ -1,0 +1,159 @@
+services:
+  ollama:
+    volumes:
+      - ollama:/root/.ollama
+      - ./llmops/models/shared:/models/shared
+      - ./scripts/start-ollama.sh:/start-ollama.sh
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    restart: unless-stopped
+    image: ollama/ollama:${OLLAMA_DOCKER_TAG-0.5.4}
+    entrypoint: ["/bin/bash", "-c"]
+    command: "/start-ollama.sh"
+
+  open-webui:
+    build:
+      context: ./open-webui
+      args:
+        OLLAMA_BASE_URL: '/ollama'
+      dockerfile: Dockerfile
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
+    container_name: open-webui
+    volumes:
+      - open-webui:/app/backend/data
+    depends_on:
+      - ollama
+      - pipelines
+      - postgres
+    ports:
+      - ${OPEN_WEBUI_PORT-3000}:8080
+    environment:
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - 'WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}'
+      - 'DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}'
+      - 'OPENAI_API_BASE_URL=${PIPELINE_API_BASE_URL}'
+      - 'OPENAI_API_KEY=${PIPELINE_API_KEY}'
+      - DEFAULT_USER_SETTINGS={"showChangelog":false,"version":"latest"}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - MLFLOW_DB=${MLFLOW_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    restart: unless-stopped
+    command: bash -c "chmod +x /docker-entrypoint-initdb.d/init.sh && docker-entrypoint.sh postgres"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      - PGADMIN_SERVER_JSON_FILE=/pgadmin4/servers.json
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json
+    ports:
+      - "${PGADMIN_PORT}:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  pipelines:
+    build:
+      context: ./pipelines
+      dockerfile: Dockerfile
+    image: ghcr.io/open-webui/pipelines:main
+    container_name: pipelines
+    environment:
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./pipelines/pipelines:/app/pipelines
+    ports:
+      - "9099:9099"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: always
+
+  llmops:
+    build:
+      context: ./llmops
+      dockerfile: Dockerfile
+    container_name: llmops
+    ports:
+      - "5000:5000"
+      - "4200:4200"
+    environment:
+      - MLFLOW_TRACKING_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${MLFLOW_DB}
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - AWS_DEFAULT_REGION=us-east-1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PREFECT_API_URL=http://0.0.0.0:4200/api
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    command: |
+      sh -c "mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${MLFLOW_DB} --default-artifact-root s3://mlflow-artifacts/ & 
+      prefect server start --host 0.0.0.0 --port 4200"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+      - ./llmops/workflows:/app/workflows
+      - ./llmops/models:/app/models
+      - ./llmops/models/shared:/app/models/shared
+      - ./llmops:/app
+    depends_on:
+      - postgres
+      - minio
+      - minio-init
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_PORT-9000}:9000"
+      - "${MINIO_CONSOLE_PORT-9001}:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD-minioadmin}
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc
+    container_name: minio-init
+    depends_on:
+      - minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD-minioadmin}
+    entrypoint: >
+      bash -c "
+      sleep 10 &&
+      mc config host add myminio http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb myminio/mlflow-artifacts --ignore-existing
+      "
+    restart: on-failure
+
+volumes:
+  ollama: {}
+  open-webui: {}
+  pipelines: {}
+  postgres_data: {}
+  pgadmin_data: {}
+  mlflow_artifacts: {}
+  minio_data: {}

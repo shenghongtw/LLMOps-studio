@@ -1,0 +1,49 @@
+services:
+  vllm:
+    image: ghcr.io/vllm-project/vllm:latest
+    container_name: vllm
+    command: serve TinyLlama/TinyLlama_v1.1 --api-key token-abc123
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu] # 如果有 GPU
+    networks:
+      - openwebui-network
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    environment:
+      - ENABLE_OLLAMA_API=false
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=token-abc123
+    ports:
+      - "3000:3000"
+    volumes:
+      - openwebui-data:/app/backend/data
+    depends_on:
+      - vllm
+    networks:
+      - openwebui-network
+
+  openwebui-pipelines:
+    image: ghcr.io/open-webui/open-webui-pipelines:main
+    container_name: openwebui-pipelines
+    environment:
+      - PIPES_OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - PIPES_OPENAI_API_KEY=token-abc123
+    depends_on:
+      - vllm
+      - openwebui
+    networks:
+      - openwebui-network
+
+volumes:
+  openwebui-data:
+
+networks:
+  openwebui-network:
+    driver: bridge

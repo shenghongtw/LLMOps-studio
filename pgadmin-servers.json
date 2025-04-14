@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "OpenWebUI PostgreSQL",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "openwebui",
+      "Username": "openwebui",
+      "SSLMode": "prefer"
+    }
+  }
+} 

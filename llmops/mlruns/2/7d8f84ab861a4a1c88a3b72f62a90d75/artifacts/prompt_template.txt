@@ -1,0 +1,3 @@
+請用 {{ num_sentences }} 個句子總結以下內容，保持準確性：
+
+內容：{{ sentences }}

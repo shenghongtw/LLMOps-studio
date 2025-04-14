@@ -1,0 +1,18 @@
+FROM /models/shared/qwen2.5-0.5b-20250408.gguf
+
+# 模型参数设置
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+
+# 系统提示词设置
+SYSTEM "你是一個有幫助的AI助手。請按照用戶的指令進行回覆，提供準確、有幫助的信息。"
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ range .Messages }}{{ if eq .Role "user" }}<|im_start|>user
+{{ .Content }}<|im_end|>
+<|im_start|>assistant
+{{ else if eq .Role "assistant" }}{{ .Content }}<|im_end|>
+{{ end }}{{ end }}"""
+
+PARAMETER stop "<|im_end|>"

@@ -1,0 +1,3 @@
+Create a concise {{ num_sentences }}-sentence summary that captures the essence of this text:
+
+{{ sentences }}
