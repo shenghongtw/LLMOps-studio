@@ -1,4 +1,4 @@
-# OpenWebUI 平台使用指南
+# LLMOps-studio 平台使用指南
 
 ## 概述
 

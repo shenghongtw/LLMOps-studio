@@ -1,14 +1,5 @@
-#getting start
-#introduce automated training execution steps
-#introduce mlflow prompt tuning experiments execution steps
-#introduce the use of local large models
-#introduce the ability to use gpt, gemini, claude, etc.
-#introduce rag pipeline
-
+# LLMOps-studio Platform User Guide
 [中文文檔](README-TW.md)
-
-# OpenWebUI Platform User Guide
-
 ## Overview
 
 This project is built on OpenWebUI, providing a one-stop LLM development, training, and application platform that integrates automated training, model management, local model deployment, and RAG applications.
